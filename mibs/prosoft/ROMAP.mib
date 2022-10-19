@@ -1,0 +1,2294 @@
+--
+--			Copyright (c) 2019-2020 by ProSoft Technology, Inc.
+--			Copyright (c) 2009-2018 by GlobalBlue Networks Inc.
+--			Copyright (c) 2001-2008 by Neesus Datacom Inc.
+--			All rights reserved
+--
+------------------------------------------------------------------------------
+--
+
+		-- ROMAP-MIB
+
+		-- v1.04  
+		-- Feb 18, 2020
+		    -- Fix a missing double dash from a comment line below.
+		-- v1.03  
+		-- Dec 15, 2017
+	        -- Add Radidating Cable Break Detection parameters and Traps.
+		-- v1.02  
+		-- May 13, 2014
+			-- Add 2nd best Parent parameter to allow monitoring of who the
+			-- next roam candidate may be.
+		-- v1.01  
+		-- Oct. 29, 2013
+			-- Add access to Ethernet nodes in the Address Table of the unit.
+		-- v1.0  
+		-- Mar. 14, 2013
+			-- Add the Scan Table to the AP Info group
+		-- Mar. 7, 2013
+			-- Add additional objects to Address Table
+		-- v0.9 
+		-- Feb. 25, 2013
+			-- Add new Info group to access the Address Table of the unit.
+		-- Feb. 13, 2013
+			-- Move new apControl objects to the Gen Info group
+			-- Add enumerations to apControlWepRequired
+			-- Add WPA mode to Gen Info group 
+			-- Add 802.11n HT mode Gen Info group
+			-- Add channel width to Gen Info group
+			-- Add objects for Tx Retry, Tx Packet Rate and Rx Packet Rate
+			-- Add objects to read current CPU temperature and Up Time
+			-- Add objects in ApInfoRptr group:
+				-- Parent Link Mode
+				-- Link up time
+				-- Current Tx Rate
+			-- Add new group ApInfoId containing identification objects:
+				-- new AP Version string
+				-- Model Name
+				-- Radio Name
+				-- Firmware Image Name
+
+		-- Nov. 3, 2008
+		-- v0.8
+			-- Add Rx and Tx Radio Throuphput statistics
+
+		-- Feb. 29, 2008
+		-- v0.7
+			-- Various Edits to deprecate certain mib parameters.
+
+		-- Sept. 5, 2003
+		-- v0.6
+			-- Add Status parameter to retrieve parent link's RSSI.
+
+		-- Apr. 10, 2003
+		-- v0.5
+			-- Add Controls for additional AP parameters.
+
+		-- Oct. 17, 2001 
+		-- v0.4
+			-- Add controls for setting the WEP keys and Key ID.
+			-- Add control to generate keys via a passphrase.
+
+		-- Aug. 13, 2001 
+		-- v0.3
+			-- Add Reset, softboot and Save to NV actions.
+			-- Change all Stats OIDS to be read only.
+
+		-- Aug. 10, 2001 
+		-- v0.2
+			-- Fixed some errors not caught by ATI xmib compiler.
+
+		-- ProSoft Technology, Inc.
+		-- 9201 Camino Media, Suite 200
+		-- Bakersfield, CA 93311
+		-- US +1 661-716-5100
+		-- support@prosoft-technology.com
+
+
+
+	-- 1.  Introduction
+
+	-- This file describes the variables that are implemented in
+	-- the ProSoft RLX2-IHxx product family. The document 
+	-- relies upon the Structure of Management Information (SMI), 
+	-- RFC1155.	 It is presented in a format described in RFC1212, 
+	-- the Concise MIB document.
+
+	-- 2. Object Definitions
+
+	-- ROMAP-MIB {iso(1) org(3) dod(6) internet(1) private(4)
+	--			  enterprises(1) 10227 }
+	-- 1.3.6.1.4.1.10227
+
+	ROMAP-MIB DEFINITIONS ::= BEGIN
+
+	IMPORTS
+		OBJECT-TYPE,
+		enterprises, IpAddress, TimeTicks,
+		NOTIFICATION-TYPE
+	        	   FROM SNMPv2-SMI
+		DisplayString
+				   FROM SNMPv2-TC;
+
+	--
+	-- Textual Conventions --
+	--
+
+	MacAddress ::= OCTET STRING (SIZE (6))	  -- a 6 octet address
+
+	DataRate ::= INTEGER {
+				r1Mbps(2),
+				r2Mbps(4),
+				r5dot5Mbps(11),
+				r6Mbps(12),
+				r9Mbps(18),
+				r11Mbps(22),
+				r12Mbps(24),
+				r18Mbps(36),
+				r24Mbps(48),
+				r36Mbps(72),
+				r48Mbps(96),
+				r54Mbps(108),
+				rMCS0(128),
+				rMCS1(129),
+				rMCS2(130),
+				rMCS3(131),
+				rMCS4(132),
+				rMCS5(133),
+				rMCS6(134),
+				rMCS7(135),
+				rMCS8(136),
+				rMCS9(137),
+				rMCS10(138),
+				rMCS11(139),
+				rMCS12(140),
+				rMCS13(141),
+				rMCS14(142),
+				rMCS15(143)
+				}						-- enmuerated data rates
+
+
+	romap			OBJECT IDENTIFIER ::= {enterprises 10227}
+
+	-- Groups in ROMAP
+
+	apControl		OBJECT IDENTIFIER ::= {romap 1}
+	apStats			OBJECT IDENTIFIER ::= {romap 2}
+	apInfo			OBJECT IDENTIFIER ::= {romap 3}
+	apRptrCntl		OBJECT IDENTIFIER ::= {romap 4}
+--  apserial        OBJECT IDENTIFIER ::= {romap 5} (in APSerial.mib) --
+	apTraps			OBJECT IDENTIFIER ::= {romap 6}
+
+	-- Groups in apInfo
+
+	apInfoQueues				OBJECT IDENTIFIER ::= {apInfo 1}
+	apInfoResources 			OBJECT IDENTIFIER ::= {apInfo 2}
+	apInfoGen					OBJECT IDENTIFIER ::= {apInfo 3}
+	apInfoRptr					OBJECT IDENTIFIER ::= {apInfo 4}
+	apInfoId					OBJECT IDENTIFIER ::= {apInfo 5}
+	apInfoAddr					OBJECT IDENTIFIER ::= {apInfo 6}     
+	apInfoScanList				OBJECT IDENTIFIER ::= {apInfo 7}
+	apInfoCableBreakDetection 	OBJECT IDENTIFIER ::= {apInfo 8}
+
+
+
+
+
+
+	-- ********************************************************************
+	--
+	-- The objects in the apControl Group
+	--
+	-- ********************************************************************
+
+	apControlRtsThreshold OBJECT-TYPE
+		SYNTAX	INTEGER (0..65535)
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"This is the threshold at which the radio will first send
+				 an RTS - CTS exchange before transmitting the actual frame.
+				 This is typically used when the BSS covers a large area and
+				 most client wireless nodes cannot hear other clients.	The
+				 RTS-CTS exchange when successful assures that the data frame
+				 that will follow will not be collided by another transmission
+				 within the BSS."
+		::= { apControl 1 }
+
+	apControlFragThreshold OBJECT-TYPE
+		SYNTAX	INTEGER (0..65535)
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"This is the threshold at which the radio will fragment
+				 a frame.  All fragements except the last will be of 
+				 the same size."
+		::= { apControl 2 }
+
+	apControlBeaconPeriod OBJECT-TYPE
+		SYNTAX	INTEGER (0..65535)
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"This is the period, measured in Kusec (1024 microseconds)
+				 at which the AP will transmit its beacon frames.
+
+				 NOTE:!! for Bridge modes this value, when represented in
+						 hexadecimal notation, should end in a '5'.	 
+						 e.g. 0x85 = 133	- valid
+							  0x75 = 117	- valid
+							  0x5f = 95		- INVALID."
+		::= { apControl 3 }
+
+	apControlDSChannel OBJECT-TYPE
+		SYNTAX	INTEGER (0..255)
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"The channel on which this device is operating."
+		::= { apControl 4 }
+
+	apControlStationBasicRate OBJECT-TYPE
+		SYNTAX	INTEGER (0..255)
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"The maximum minimum rate which must be supported."
+		::= { apControl 5 }
+
+	apControlSSID OBJECT-TYPE
+		SYNTAX	DisplayString (SIZE(1..32))
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"The ID of this wireless network.  All devices must
+				 have the same SSID in order to communicate.  Technically
+				 the characters of this string can be any value, however
+				 in most implementations the SSID is a user readable string."
+		::= { apControl 6 }
+
+	apControlEncapMode OBJECT-TYPE
+		SYNTAX	INTEGER {
+				ethernetEncapsulation(1),
+				rfc1042Conversion(2),
+				ieee802dot1hConversion(3)
+				}
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"Defines the conversion the unit will use when it receives
+				 a DIX frame from the Ethernet network, before transmitting
+				 it to the wireless media.	Also defines how to covert frames
+				 received from the wireless medium before forwarding them to 
+				 the wired network.
+				 -	In RFC1042 mode the translation table is empty except
+					for two entries; types 0x8137 and 0x80F3.
+				 -	In 802.1h mode the translation table is full.
+
+				 NOTE:!! Implementers: Internal storage of this parameter 
+									   ranges from 0-2."
+		::= { apControl 7 }
+
+	apControlAssociationStaleTime OBJECT-TYPE
+		SYNTAX	INTEGER (0..100000)
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"Defines the timeout in units of minutes, when an entry 
+				 will be marked in the address table as not associated due 
+				 to inactivity."
+		::= { apControl 8 }
+
+	apControlAuthenticationStaleTime OBJECT-TYPE
+		SYNTAX	INTEGER (0..100000)
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"Defines the timeout in units of minutes, when an entry 
+				 will be removed from the address table due to inactivity."
+		::= { apControl 9 }
+
+	apControlDisassocRetryThreshold OBJECT-TYPE
+		SYNTAX	INTEGER (0..65535)
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"Defines the number of successive transmission failures that
+				 will result in the destination address being removed from 
+				 the address table."
+		::= { apControl 10 }
+
+	apControlWepRequired OBJECT-TYPE
+		SYNTAX	INTEGER {
+				wepDisabled(1),
+				wep64bit(3),
+				wep128bit(7),
+				tkip(17),
+				aes(33),
+				tkip-aes(49)
+				}
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"Defines the mode of RC4 Encryption being used."
+		::= { apControl 11 }
+
+	apControlNetworkMode OBJECT-TYPE
+		SYNTAX	INTEGER {
+				clientCPE(1),
+				accessPoint(2),
+				bridgeSlave(5),
+				bridgeMaster(6),
+				bridgeRepeater(7)
+				}
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"Sets the mode in which this unit will operate.	 
+
+				 NOTE:!! -	Some modes may not be supported by all units.
+				 Setting a newer unit that supports Repeater Mode to 
+				 bridgeSlave(5) with this control will actually set the
+				 unit to Repeater Mode, as this is the closest to Slave
+				 Mode that's now supported."
+		::= { apControl 12 }
+
+	apControlResetAP OBJECT-TYPE
+		SYNTAX	INTEGER {
+				hdwresetAP(1),
+				hdwresetAndSaveToNonvolatile(2)
+				}
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"Performs a hardware reset on the AP. Doing a set on this
+				 OID with a value of 1 will initiate the reset of the
+				 hardware after the response to the set has completed.
+				 Any parameters that have been changed with a Set will be
+				 lost unless a Save has been done or the set had a value of
+				 2. In this case the unit will save its Control MIB values
+				 to nonvolatile and then initiate the reset."
+		::= { apControl 13 }
+
+	apControlSoftBootAP OBJECT-TYPE
+		SYNTAX	INTEGER {
+				softBootAP(1),
+				softBootAndSaveToNonvolatile(2)
+				}
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"Performs a soft reset on the APs core code. This will allow
+				 any parameters that have been changed with a previous SNMP
+				 set to take effect.  The soft boot will not save any new 
+				 settings unless the set is done with a value of 2 indicating
+				 that the unit should save the Control MIB to nonvolatile 
+				 before initiating a soft boot."
+		::= { apControl 14 }
+
+	apControlSaveToNonvolatile OBJECT-TYPE
+		SYNTAX	INTEGER {
+				saveControlMIB(1),
+				saveAll(2)
+				}
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"A set to this object will initiate a save of the Control MIB
+				 parameters to non-volatile.  A set with a value of 1 will 
+				 save only the Control MIB, while a set with a value of 2 will
+				 save all information."
+		::= { apControl 15 }
+
+	apControlDefaultKeyId OBJECT-TYPE
+		SYNTAX	INTEGER (1..4)
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"Defines the default WEP key that the device will use to 
+				 encrypt frames before transmitting to the BSS. 
+				 Note: When apControlWepRequired is set to wep128bit
+				 only key ID 1 is valid and any other value will be ignored
+				 by the device."
+		::= { apControl 16 }
+
+	apControl64BitKey1 OBJECT-TYPE
+		SYNTAX	OCTET STRING (SIZE(5))
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"This sets 64(40) bit default WEP key 1 to a new value.	 
+				 Note:	Reads to this parameter will return all zeros.
+				 Byte order is expected to be lsbyte to msbyte in bytes
+				 1 to 5.
+				 Note: This key will only be used if the apControlWepRequired
+				 parameter is set to 'wep64bit'"
+		::= { apControl 17 }
+
+	apControl64BitKey2 OBJECT-TYPE
+		SYNTAX	OCTET STRING (SIZE(5))
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"This sets 64(40) bit default WEP key 2 to a new value.	 
+				 Note:	Reads to this parameter will return all zeros.
+				 Byte order is expected to be lsbyte to msbyte in bytes
+				 1 to 5.
+				 Note: This key will only be used if the apControlWepRequired
+				 parameter is set to 'wep64bit'"
+		::= { apControl 18 }
+
+	apControl64BitKey3 OBJECT-TYPE
+		SYNTAX	OCTET STRING (SIZE(5))
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"This sets 64(40) bit default WEP key 3 to a new value.	 
+				 Note:	Reads to this parameter will return all zeros.
+				 Byte order is expected to be lsbyte to msbyte in bytes
+				 1 to 5.
+				 Note: This key will only be used if the apControlWepRequired
+				 parameter is set to 'wep64bit'"
+		::= { apControl 19 }
+
+	apControl64BitKey4 OBJECT-TYPE
+		SYNTAX	OCTET STRING (SIZE(5))
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"This sets 64(40) bit default WEP key 4 to a new value.	 
+				 Note:	Reads to this parameter will return all zeros.
+				 Byte order is expected to be lsbyte to msbyte in bytes
+				 1 to 5.
+				 Note: This key will only be used if the apControlWepRequired
+				 parameter is set to 'wep64bit'"
+		::= { apControl 20 }
+
+	apControl128BitKey OBJECT-TYPE
+		SYNTAX	OCTET STRING (SIZE(13))
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"This sets the 128(104) bit WEP key to a new value.	 
+				 Note:	Reads to this parameter will return all zeros.
+				 Byte order is expected to be lsbyte to msbyte in bytes
+				 1 to 13.
+				 Note: This entry has been depracated with the addition
+				 of objects to set 4 128 bit WEP keys."
+		::= { apControl 21 }
+
+	apControlPassphrase OBJECT-TYPE
+		SYNTAX	DisplayString (SIZE(1..32))
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"This string is used by the device to generate the 4 default
+				 WEP keys plus the 4 - 128 bit key.
+				 Note:	Reads to this parameter will return a NULL string."
+		::= { apControl 22 }
+
+	apControl128BitKey1 OBJECT-TYPE
+		SYNTAX	OCTET STRING (SIZE(13))
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"This sets 128(104) bit WEP key 1 to a new value.  
+				 Note:	Reads to this parameter will return all zeros.
+				 Byte order is expected to be lsbyte to msbyte in bytes
+				 1 to 13."
+		::= { apControl 23 }
+
+	apControl128BitKey2 OBJECT-TYPE
+		SYNTAX	OCTET STRING (SIZE(13))
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"This sets 128(104) bit WEP key 2 to a new value.  
+				 Note:	Reads to this parameter will return all zeros.
+				 Byte order is expected to be lsbyte to msbyte in bytes
+				 1 to 13."
+		::= { apControl 24 }
+
+	apControl128BitKey3 OBJECT-TYPE
+		SYNTAX	OCTET STRING (SIZE(13))
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"This sets 128(104) bit WEP key 3 to a new value.  
+				 Note:	Reads to this parameter will return all zeros.
+				 Byte order is expected to be lsbyte to msbyte in bytes
+				 1 to 13."
+		::= { apControl 25 }
+
+	apControl128BitKey4 OBJECT-TYPE
+		SYNTAX	OCTET STRING (SIZE(13))
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"This sets 128(104) bit WEP key 4 to a new value.  
+				 Note:	Reads to this parameter will return all zeros.
+				 Byte order is expected to be lsbyte to msbyte in bytes
+				 1 to 13."
+		::= { apControl 26 }
+
+	apControlDtimPeriod OBJECT-TYPE
+		SYNTAX	INTEGER (0..65535)
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"This is the period, measured in Beacon Periods 
+				 at which the AP will transmit a DTIM beacon frame."
+		::= { apControl 27 }
+
+	apControlCfpMode OBJECT-TYPE
+		SYNTAX	INTEGER {
+				dcfMode(1),
+				cfpMode(2)
+				}
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"This sets the whether the AP will enable a Contention 
+				 Free period (2) or to use only DCF (1). Default value
+				 is (1)."
+		::= { apControl 28 }
+
+	apControlCfpPeriod OBJECT-TYPE
+		SYNTAX	INTEGER (0..65535)
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"This is the period, measured in DTIM Periods 
+				 at which the AP will start a Contention Free Period."
+		::= { apControl 29 }
+
+	apControlCfpMaxDuration OBJECT-TYPE
+		SYNTAX	INTEGER (0..65535)
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"This sets the duration, measured in Kusec(1024 microseconds),
+				 of the contention free period.	 This value is advertised in
+				 the CFP element of beacon frames when the cfpMode is (2).
+				 This value represents the maximum period which can be
+				 shortened via a CFEnd frame if the AP has no data to send."
+		::= { apControl 30 }
+
+	apControlBand OBJECT-TYPE
+		SYNTAX	INTEGER {bg24Band(1),a5Band(2)}
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"A set to the parameter is only relevant if the unit supports
+				 a modal dual band radio. A read of this parameter returns
+				 the current band in which this unit is operating, i.e.
+				 2.4 Ghz or 5 GHz."
+		::= { apControl 31 }
+
+
+
+
+	-- ********************************************************************
+	--
+	-- The objects in the Stats Group
+	--
+	-- ********************************************************************
+
+	apStatsTxGood OBJECT-TYPE
+		SYNTAX	Counter
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"Count of number good transmissions to the radio."
+		::= { apStats 1 }
+
+	apStatsRxGood OBJECT-TYPE
+		SYNTAX	Counter
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"Count of number good receptions from the radio."
+		::= { apStats 2 }
+
+	apStatsTxBad OBJECT-TYPE
+		SYNTAX	Counter
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"Count of number bad transmissions to the radio."
+		::= { apStats 3 }
+
+	apStatsRxBad OBJECT-TYPE
+		SYNTAX	Counter
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"Count of number bad receptions from the radio."
+		::= { apStats 4 }
+
+	apStatsRxNoBuf OBJECT-TYPE
+		SYNTAX	Counter
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"Count of number reception failures because of no receive
+				 buffers."
+		::= { apStats 5 }
+
+	apStatsTxDirectedBytes OBJECT-TYPE
+		SYNTAX	OCTET STRING (SIZE(8))
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"A quad word counter of number of non-multicast bytes
+				 transmitted."
+		::= { apStats 6 }
+ 
+	apStatsTxDirectedFrames OBJECT-TYPE
+		SYNTAX	Counter
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"Count of number good non-multicast transmissions to 
+				 the radio."
+		::= { apStats 7 }
+
+	apStatsTxMulticastBytes OBJECT-TYPE
+		SYNTAX	OCTET STRING (SIZE(8))
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"A quad word counter of number of multicast bytes
+				 transmitted."
+		::= { apStats 8 }
+
+	apStatsTxMulticastFrames OBJECT-TYPE
+		SYNTAX	Counter
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"Count of number good multicast transmissions to 
+				 the radio."
+		::= { apStats 9 }
+
+	apStatsTxBroadcastBytes OBJECT-TYPE
+		SYNTAX	OCTET STRING (SIZE(8))
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"A quad word counter of number of Broadcast bytes
+				 transmitted."
+		::= { apStats 10 }
+
+	apStatsTxBroadcastFrames OBJECT-TYPE
+		SYNTAX	Counter
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"Count of number good Broadcast transmissions to 
+				 the radio."
+		::= { apStats 11 }
+
+	apStatsRxDirectedBytes OBJECT-TYPE
+		SYNTAX	OCTET STRING (SIZE(8))
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"A quad word counter of number of non-multicast bytes
+				 received."
+		::= { apStats 12 }
+ 
+	apStatsRxDirectedFrames OBJECT-TYPE
+		SYNTAX	Counter
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"Count of number good non-multicast receptions to 
+				 the radio."
+		::= { apStats 13 }
+
+	apStatsRxMulticastBytes OBJECT-TYPE
+		SYNTAX	OCTET STRING (SIZE(8))
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"A quad word counter of number of multicast bytes
+				 received."
+		::= { apStats 14 }
+
+	apStatsRxMulticastFrames OBJECT-TYPE
+		SYNTAX	Counter
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"Count of number good multicast receptions to 
+				 the radio."
+		::= { apStats 15 }
+
+	apStatsRxBroadcastBytes OBJECT-TYPE
+		SYNTAX	OCTET STRING (SIZE(8))
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"A quad word counter of number of Broadcast bytes
+				 received."
+		::= { apStats 16 }
+
+	apStatsRxBroadcastFrames OBJECT-TYPE
+		SYNTAX	Counter
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"Count of number good Broadcast receptions to 
+				 the radio."
+		::= { apStats 17 }
+
+	apStatsRxCrcError OBJECT-TYPE
+		SYNTAX	Counter
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"Count of number of frames received with CRC error."
+		::= { apStats 18 }
+
+
+	apStatsRxMgmt OBJECT-TYPE
+		SYNTAX	Counter
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"Count of number of received 802.11 frames of type MGMT."
+		::= { apStats 19 }
+
+	apStatsRxData OBJECT-TYPE
+		SYNTAX	Counter
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"Count of number of received 802.11 frames of type DATA."
+		::= { apStats 20 }
+
+	apStatsRxCntl OBJECT-TYPE
+		SYNTAX	Counter
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"Count of number of received 802.11 frames of type CNTL."
+		::= { apStats 21 }
+
+	apStatsTxMgmt OBJECT-TYPE
+		SYNTAX	Counter
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"Count of number of transmitted 802.11 frames of type MGMT
+				 sent from the Management queue."
+		::= { apStats 22 }
+
+	apStatsTxData OBJECT-TYPE
+		SYNTAX	Counter
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"Count of number of transmitted 802.11 frames of type DATA
+				 sent from the Data queue."
+		::= { apStats 23 }
+
+	apStatsTxBcast OBJECT-TYPE
+		SYNTAX	Counter
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"Count of number of transmitted 802.11 frames of type DATA
+				 sent from the Broadcast queue."
+		::= { apStats 24 }
+
+	apStatsTxDs OBJECT-TYPE
+		SYNTAX	Counter
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"Count of number of frames sent to the distribution system. 
+				 (This is the Ethernet interface on a typical AP)."
+		::= { apStats 25 }
+
+	apStatsRxDs OBJECT-TYPE
+		SYNTAX	Counter
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"Count of number of frames received from the distribution 
+				 system. (This is the Ethernet interface on a typical AP)."
+		::= { apStats 26 }
+
+	apStatsTxLocal OBJECT-TYPE
+		SYNTAX	Counter
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"Count of number of frames sent to the local TCP/IP stack
+				 from the AP." 
+		::= { apStats 27 }
+
+	apStatsRxLocal OBJECT-TYPE
+		SYNTAX	Counter
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"Count of number of frames received from the local TCP/IP
+				stack by the AP. "
+		::= { apStats 28 }
+
+	apStatsRxDuplicate OBJECT-TYPE
+		SYNTAX	Counter
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"Count of number of duplicate 802.11 frames received from 
+				 the radio."
+		::= { apStats 29 }
+
+	apStatsRxNotAssociated OBJECT-TYPE
+		SYNTAX	Counter
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"Count of number of frames received from wireless nodes who
+				 are not in this units address table."
+		::= { apStats 30 }
+
+	apStatsOutOfPackets OBJECT-TYPE
+		SYNTAX	Counter
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"Count of number of times could not receive a frame due to
+				 lack of free packet buffers in the AP.	 This applies to
+				 frames received from any interface (DS, Radio, Local)."
+		::= { apStats 31 }
+
+	apStatsDecryptFailures OBJECT-TYPE
+		SYNTAX	Counter
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"Count of number of frames for which the decryption process 
+				 failed.  Failure typically means that the key used to 
+				 decrypt the frame does not match that used to encrypt it." 
+		::= { apStats 32 }
+
+	apStatsExcludeUnencrypted OBJECT-TYPE
+		SYNTAX	Counter
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"Count of number of frames that were rejected because they
+				 were received unencrypted while the unit was set to only
+				 accept encrypted frames."
+		::= { apStats 33 }
+
+	apStatsRadioTxThroughput OBJECT-TYPE
+		SYNTAX	INTEGER (1..4294967295)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The rate of data sent out the radio interface in units 
+				 of kbits/s, averaged over the last n seconds, where n
+				 is obtained from apStatsRadioThroughputInterval.  This
+				 is only calculated on the Parent radio link, therefore
+				 a Master will always return 0 for this parameter."
+		::= { apStats 34 }
+
+	apStatsRadioRxThroughput OBJECT-TYPE
+		SYNTAX	INTEGER (1..4294967295)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The rate of data received from the radio interface in units 
+				 of kbits/s, averaged over the last n seconds, where n
+				 is obtained from apStatsRadioThroughputInterval.  This
+				 is only calculated on the Parent radio link, therefore
+				 a Master will always return 0 for this parameter."
+		::= { apStats 35 }
+
+	apStatsRadioThroughputInterval OBJECT-TYPE
+		SYNTAX	INTEGER (1..255)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The interval in seconds at which a throughput calculation
+				 is made by the unit."
+		::= { apStats 36 }
+
+	apStatsRadioRetries OBJECT-TYPE
+		SYNTAX	INTEGER (0..255)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"This parameter represents the percentage of transmissions
+				 that were retries, averaged over the last n seconds, where n
+				 is obtained from apStatsRadioThroughputInterval.  This
+				 is only calculated on the Parent radio link, therefore
+				 a Master will always return 0 for this parameter."
+		::= { apStats 37 }
+
+	apStatsRadioTxPacketRate OBJECT-TYPE
+		SYNTAX	INTEGER (0..4294967295)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"This parameter represents the overall packet transmission
+				 rate to all peers, in packets per second, averaged over 
+				 the last n seconds, where n is obtained from 
+				 apStatsRadioThroughputInterval."
+		::= { apStats 38 }
+
+	apStatsRadioRxPacketRate OBJECT-TYPE
+		SYNTAX	INTEGER (0..4294967295)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"This parameter represents the overall packet reception
+				 rate from all peers, in packets per second, averaged over 
+				 the last n seconds, where n is obtained from 
+				 apStatsRadioThroughputInterval."
+		::= { apStats 39 }
+
+	apStatsRadioAvgLatency		OBJECT-TYPE
+		SYNTAX	INTEGER (0..4294967295)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"This object is an overall running average of the latency to 
+				 successfully complete packet radio transmissions.
+
+				 Latency is in microseconds and is measured from the time 
+				 a packet is queued to the radio until the transmission 
+				 is successfully acknowledged by the destination device, or
+				 in the case of multicasts, until the initial transmission
+				 has completed.
+				 Note: - this value includes the RF transmission times of 
+				         any retransmissions and backoff intervals plus any
+				         acknowledge frames.
+				       - pipelining and aggregation imply that the actual
+				         packet rate will be higher than represented by this 
+				         number."
+		::= { apStats 40 }
+
+
+
+	-- ********************************************************************
+	--
+	-- The objects in the Queue Info Group
+	--
+	-- ********************************************************************
+
+	apInfoQueuesPwrSave OBJECT-TYPE
+		SYNTAX	INTEGER (0..65535)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The total number of frames buffered and waiting on the
+				 Power Save Queue. (for all power save nodes)."
+		::= { apInfoQueues 1 }
+
+	apInfoQueuesBcast OBJECT-TYPE
+		SYNTAX	INTEGER (0..65535)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The current depth of the Broadcast Tx Queue."
+		::= { apInfoQueues 2 }
+
+	apInfoQueuesCFP OBJECT-TYPE
+		SYNTAX	INTEGER (0..65535)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION 
+				"The current depth of the CFP Tx Queue."
+		::= { apInfoQueues 3 }
+
+	apInfoQueuesData OBJECT-TYPE
+		SYNTAX	INTEGER (0..65535)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION 
+				"The current depth of the Data Tx Queue."
+		::= { apInfoQueues 4 }
+
+	apInfoQueuesMgmt OBJECT-TYPE
+		SYNTAX	INTEGER (0..65535)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION 
+				"The current depth of the Mgmt Tx Queue."
+		::= { apInfoQueues 5 }
+
+	apInfoQueuesRxDs OBJECT-TYPE
+		SYNTAX	INTEGER (0..65535)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION 
+				"The current depth of the Distribution System Receive
+				 Queue."
+		::= { apInfoQueues 6 }
+
+	apInfoQueuesTxDs OBJECT-TYPE
+		SYNTAX	INTEGER (0..65535)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION 
+				"The current depth of the Distribution System Transmit
+				 Queue."
+		::= { apInfoQueues 7 }
+
+	apInfoQueuesRxLocal OBJECT-TYPE
+		SYNTAX	INTEGER (0..65535)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION 
+				"The current depth of the Local Interface Rx Queue."
+		::= { apInfoQueues 8 }
+
+	apInfoQueuesTxLocal OBJECT-TYPE
+		SYNTAX	INTEGER (0..65535)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION 
+				"The current depth of the Local Interface Tx Queue."
+		::= { apInfoQueues 9 }
+
+	apInfoQueuesRxRadio OBJECT-TYPE
+		SYNTAX	INTEGER (0..65535)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION 
+				"The current depth of the Radio Receive Queue."
+		::= { apInfoQueues 10 }
+
+
+
+	-- ******************************************************************
+	--
+	-- The objects in the Resources Info Group
+	--
+	-- ******************************************************************
+
+	apInfoResourcesPacketPoolUsed OBJECT-TYPE
+		SYNTAX	INTEGER (0..65535)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION 
+				"The current number of Packet Descriptors that are used."
+		::= { apInfoResources 1 }
+
+	apInfoResourcessBufferPoolUsed OBJECT-TYPE
+		SYNTAX	INTEGER (0..65535)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION 
+				"The current number of Buffers that are used."
+		::= { apInfoResources 2 }
+
+	apInfoResourcessPacketPoolFree OBJECT-TYPE
+		SYNTAX	INTEGER (0..65535)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION 
+				"The current number of free Packet Descriptors in the pool."
+		::= { apInfoResources 3 }
+
+	apInfoResourcessBufferPoolFree OBJECT-TYPE
+		SYNTAX	INTEGER (0..65535)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION 
+				"The current number of free Buffers in the pool."
+		::= { apInfoResources 4 }
+
+
+
+
+
+	-- ********************************************************************
+	--
+	-- The objects in the General Info Group
+	--
+	-- ********************************************************************
+
+	apInfoGenAPVersion OBJECT-TYPE
+		SYNTAX	OCTET STRING (SIZE(4))
+		ACCESS	read-only
+		STATUS	deprecated
+		DESCRIPTION
+				"The version of the code running in this unit.
+				 
+				 Format is: CoreMajor:CoreMinor:Variant:Build
+
+				 Note: in newer models the actual format for this deprecated
+				 entry is actually: CoreMajor:CoreMinor:Platform:Radio"
+		::= { apInfoGen 1 }
+
+	apInfoGenAPAddress OBJECT-TYPE
+		SYNTAX	MacAddress
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The MAC Address used by this unit and to which it is known
+				 on all interfaces."
+		::= { apInfoGen 2 }
+
+	apInfoGenNumAssociations OBJECT-TYPE
+		SYNTAX	INTEGER (0..65535)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The number of Assoications currently active in this unit."
+		::= { apInfoGen 3 }
+
+	apInfoGenNumAuthentications OBJECT-TYPE
+		SYNTAX	INTEGER (0..65535)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The number of Authentications currently active in this unit."
+		::= { apInfoGen 4 }
+
+	apInfoGenNumPsNodes OBJECT-TYPE
+		SYNTAX	INTEGER (0..65535)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The number	 of associated nodes that are using a power
+				 save mode."
+		::= { apInfoGen 5 }
+
+	apInfoGenState OBJECT-TYPE
+		SYNTAX	INTEGER {
+				notLinked(1),
+				linked(2)
+				}
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The status of the radio link in this unit.	 For AP or 
+				 Bridge Masters a state of 'linked' implies at least one
+				 wireless client has associated.
+
+				 Implementer's NOTE:!! - Actual values in unit are a value
+										 of 1 less than this enumeration."
+		::= { apInfoGen 6 }
+
+	apInfoGenMgmtState OBJECT-TYPE
+		SYNTAX	INTEGER {
+				scanning(1),  -- used in Bridge Slave and CPE modes
+				synced(2),	  -- intermediate state in Bridge Slave mode
+				bgScan(3),	  -- obsolete
+				authenticated(4),	 -- obsolete - done in firmware
+				associationPending(5), -- obsolete - done in firmware
+				associated(6),	-- used in Bridge Slave and CPE modes
+				apOperational(7), -- default state of AP or Bridge Master
+				authenticationPending(8), -- obsolete - done in firmware
+				sharedKeyAuthentPending(9) -- obsolete - done in firmware
+				}
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The status of the unit's 802.11 management module."
+		::= { apInfoGen 7 }
+
+	apInfoGenParentSignalStrength OBJECT-TYPE
+		SYNTAX	INTEGER (0..128)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The signal strength of the unit's parent node.	 This
+				 parameter is only valid while in Infrastructure or Repeater
+				 modes. In AP or Bridge Master modes, this parameter returns
+				 zero. The actual received power can be determined by taking
+				 the returned number and subtracting 100.  This will usually
+				 result in a signed number in units of dBm.	 E.g. a returned
+				 value of 48 is equivalent to received signal level of -52
+				 dBm."
+		::= { apInfoGen 8 }
+
+	apInfoGenTemperature OBJECT-TYPE
+		SYNTAX	INTEGER (0..128)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The temperature of the unit's CPU core in units of degrees
+				 Celsius. 
+
+				 Implementer's NOTE:!! - Will read as zero after power up 
+				                         for 1 minute until first temperature 
+				                         reading."
+		::= { apInfoGen 9 }
+
+	apInfoGenUptime OBJECT-TYPE
+		SYNTAX	INTEGER (1..4294967295)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The time in seconds since this unit was last powered up."
+
+		::= { apInfoGen 10 }
+
+
+	apInfoGenWPA OBJECT-TYPE
+		SYNTAX	INTEGER {
+				wpa-none(1),
+				wpa(2),
+				wpa2(3),
+				wpa-wpa2(4)
+				}
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The current WPA mode of the unit."
+		::= { apInfoGen 11 }
+
+	apInfoGenHtEnabled OBJECT-TYPE
+		SYNTAX	INTEGER {
+				htDisabled(0),
+				htEnabled(1),
+				htNotSupported(255)
+				}
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The current HT (802.11n) mode of the radio. Models that 
+				 do not have 'n' radios will always return a value of 255."
+		::= { apInfoGen 12 }
+
+	apInfoGenChannelWidth OBJECT-TYPE
+		SYNTAX	INTEGER {
+				w20MHzChannel(1),
+				w40MHzChannel(2)
+				}
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The current use of the extension channel. 
+				 Radios that do not support HT mode will always return 1.
+				 Note that a unit that reports 40MHz channel will use
+				 20 MHz channel for packets sent to a peer device that
+				 does not support use of the extension channel."
+		::= { apInfoGen 13 }
+
+
+	-- ******************************************************************
+	--
+	-- The objects in the Repeater Info Group
+	--
+	-- ******************************************************************
+
+	apInfoRptrCurrentHopCount OBJECT-TYPE
+		SYNTAX	INTEGER (1..15)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The current hop count of the repeater.  Masters and APs
+				 set this parameter to one.  A repeater connected directly
+				 to a Master will have current hop count of two, etc.."
+		::= { apInfoRptr 1 }
+
+	apInfoRptrCurrentParent OBJECT-TYPE
+		SYNTAX	MacAddress
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The MAC Address of the Bridge to which this unit is 
+				 connected.  If the unit is an AP or Master, then the 
+				 value returned for this parameter is the all zeros 
+				 address."
+		::= { apInfoRptr 2 }
+
+	apInfoRptrCurrentChannel OBJECT-TYPE
+		SYNTAX	INTEGER (0..255)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The current channel which this unit is operating.  This
+				 value can change if the unit is a repeater and roams to
+				 a new BSS operating on a different channel.  The value of
+				 this parameter represents the channel of the current 
+				 Parent node.  A Master or AP will return the same value
+				 in this parameter as that of the apControlDSChannel 
+				 parameter.  If the unit supports both 2.4 and 5 GHz
+				 bands, then this parameter must be interpreted along
+				 with the apControlBand parameter."
+		::= { apInfoRptr 3 }
+
+	apInfoRptrLinkMode OBJECT-TYPE
+		SYNTAX	INTEGER {
+				m802dot11ag(0),
+				m802dot11n(1),
+				m802dot11n40MHz(2),
+				m802dot11nolink(255)
+				}
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"This indicates the current Link Mode of the unit.  The 
+				 Link Mode would always be the 'fastest' mode this unit, 
+				 the Parent and the current channel have in common.
+				 Note that some channels only support 20 MHz 'n' mode and 
+				 this would override any 40MHz setting of the 802.11 Mode."
+		::= { apInfoRptr 4 }
+
+	apInfoRptrLinktime OBJECT-TYPE
+		SYNTAX	INTEGER (0..4294967295)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The time in seconds since this unit last associated 
+				 with a Parent.  This parameter will always be zero
+				 in a unit configured as a Master, or a Client or Repeater
+				 that is not Associated."
+
+		::= { apInfoRptr 5 }
+
+	apInfoRptrCurTxRate OBJECT-TYPE
+		SYNTAX	DataRate 
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"This indicates the current Tx Rate being used by this unit
+				 on it radio link to the Parent."
+		::= { apInfoRptr 6 }
+
+	apInfoRptrNextParent OBJECT-TYPE
+		SYNTAX	MacAddress
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The MAC Address of the next Bridge to which this unit may
+				 roam.  If there are no roam overrides, then this will be
+				 the Bridge in the Scan Table with the lowest cost (excluding
+				 the current parent).  If this unit is mobile then this MAC
+				 Address may change as the RSSI values of surrounding Bridges
+				 change.
+
+				 If there is a Next Parent Override active then this
+				 parameter returns that Bridge's MAC address.
+				 
+				 If the unit is an AP or Master, then the value returned for 
+				 this parameter is the all zeros 
+				 address."
+		::= { apInfoRptr 7 }
+
+
+	apInfoRptrNextParentSignalStrength OBJECT-TYPE
+		SYNTAX	INTEGER (0..128)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The signal strength of the unit indicated in the
+				 apInfoRptrNextParent parameter.	 
+				 This parameter is only valid while in Infrastructure or 
+				 Repeater modes. In AP or Bridge Master modes, this parameter 
+				 returns zero. 
+
+				 The actual received power can be determined by taking
+				 the returned number and subtracting 100.  This will usually
+				 result in a signed number in units of dBm.	 E.g. a returned
+				 value of 48 is equivalent to received signal level of -52
+				 dBm."
+		::= { apInfoRptr 8 }
+	-- ********************************************************************
+	--
+	-- The objects in the Unit Identification Info Group
+	--
+	-- ********************************************************************
+
+	apInfoIdAPVersion OBJECT-TYPE
+		SYNTAX	OCTET STRING (SIZE(6))
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The version of the code running in newer units.
+				 
+				 The first 4 octets represent the version of: 
+						  CoreMajor:CoreMinor:Platform:Radio
+				 The 5th octet nibbles represent the:
+				 		  OS Type/Platform Type
+				 The 6th octet nibbles represent the:
+				 		  Radio Type/Build Variant."
+		::= { apInfoId 1 }
+
+	apInfoIdModelName OBJECT-TYPE
+		SYNTAX	DisplayString (SIZE(1..32))
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The Model Name of this unit representing the variant of the
+				 Model Family."
+		::= { apInfoId 2 }
+
+	apInfoIdRadioName OBJECT-TYPE
+		SYNTAX	DisplayString (SIZE(1..32))
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The Name of this unit as configured by the network 
+				 administrator."
+		::= { apInfoId 3 }
+
+	apInfoIdFirmwareImage OBJECT-TYPE
+		SYNTAX	DisplayString (SIZE(1..32))
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The Image name loaded into this unit.  Includes the wireless
+				 driver and web pages of the unit."
+		::= { apInfoId 4 }
+
+
+ 	-- ********************************************************************
+	--
+	-- The objects in the Unit Address Table Group
+	--
+	-- ********************************************************************   
+	--
+ 	-- The Radio Address Table
+    --
+	apInfoAddrMaxRadioNodes OBJECT-TYPE
+		SYNTAX	INTEGER (0..65535)
+		MAX-ACCESS	read-only
+		STATUS	current
+		DESCRIPTION
+				"Defines the maximum number of radio associations that can
+				 be in the address table.  This includes both wireless
+				 clients and peer bridges."
+		::= { apInfoAddr 1 }
+
+	apInfoAddrMaxBridgeNodes OBJECT-TYPE
+		SYNTAX	INTEGER (0..65535)
+		MAX-ACCESS	read-only
+		STATUS	current
+		DESCRIPTION
+				"Defines the maximum number of peer wireless bridge
+				 associations that can be in the address table."
+		::= { apInfoAddr 2 }
+
+	apInfoAddrRadioTable OBJECT-TYPE
+		SYNTAX		SEQUENCE OF ApInfoAddrRadioEntry
+		MAX-ACCESS	not-accessible
+		STATUS		current
+		DESCRIPTION
+				"The MAC Address table of the unit.  This contains one entry
+				 for each MAC Address the unit has encountered, either through
+				 learning or association.  The number of entries is varying
+				 and limited to maximums that may vary by product.  Use the 
+				 apInfoAddrMaxRadioNodes object to retrieve the maximum in 
+				 this unit."
+
+		::= { apInfoAddr 3 }
+
+
+	apInfoAddrRadioEntry OBJECT-TYPE
+		SYNTAX		ApInfoAddrRadioEntry    
+		MAX-ACCESS	not-accessible
+		STATUS		current
+		DESCRIPTION
+				"An Entry (conceptual row) in the apInfoAddrTable representing
+				 one external network device.  A row in this table cannot be
+				 created or deleted."
+		INDEX { apInfoAddrRadioEntryType, apInfoAddrRadioEntryIndex }
+
+		::= { apInfoAddrRadioTable 1 }
+
+
+	ApInfoAddrRadioEntry ::= SEQUENCE 
+		{
+			 apInfoAddrRadioEntryType		INTEGER,  
+			 apInfoAddrRadioEntryIndex		INTEGER,
+			 apInfoAddrRadioMacAddr			MacAddress,
+			 apInfoAddrRadioIpAddr			IpAddress,
+			 apInfoAddrRadioStatus			INTEGER,
+			 apInfoAddrRadioAge				INTEGER,
+			 apInfoAddrRadioRssi			INTEGER,
+			 apInfoAddrRadioTxRate			INTEGER,
+			 apInfoAddrRadioTxThroughput	INTEGER,
+			 apInfoAddrRadioRxThroughput	INTEGER,
+			 apInfoAddrRadioTxPacketRate	INTEGER,
+			 apInfoAddrRadioRxPacketRate	INTEGER,
+			 apInfoAddrRadioRetries			INTEGER,
+			 apInfoAddrRadioTxFailureCount	Counter,
+			 apInfoAddrRadioAvgLatency		INTEGER
+		} 
+
+  	apInfoAddrRadioEntryType OBJECT-TYPE
+		SYNTAX		INTEGER  {  
+						wirelessClient (2),
+						childBridge    (10),
+						parentBridge   (18)
+					}
+		MAX-ACCESS	not-accessible
+		STATUS		current
+		DESCRIPTION
+				"Index object which identifies the type of radio entry in the
+				 address table.  The wirelessClient type is any wireless
+				 endpoint client device like a laptop, iPad, cell phone etc.
+				 Peer Wireless Bridges are  either the Parent Bridge or a
+				 Child Bridge.  Note that there is at most only one Parent 
+				 Bridge.  
+				 
+				 A query using the parentBridge index will not find
+				 an entry in the address table if the unit's Network Mode
+				 is bridgeMaster or accessPoint, or if in one of the other
+				 Network Modes and the unit has not yet associated with its
+				 Parent.
+				 
+				 A query using the wirelessClient index will not find an 
+				 entry in the address table if the unit's Network Mode is 
+				 clientCPE or bridgeSlave."
+
+		::= { apInfoAddrRadioEntry 1 }
+
+   	apInfoAddrRadioEntryIndex OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS	not-accessible
+		STATUS		current
+		DESCRIPTION
+				"Index object which identifies the index into the MAC
+				 address table."
+
+		::= { apInfoAddrRadioEntry 2 }
+
+	apInfoAddrRadioMacAddr OBJECT-TYPE
+		SYNTAX		MacAddress
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"The MAC Address of the associated wireless device."
+
+		::= { apInfoAddrRadioEntry 3 }
+
+ 	apInfoAddrRadioIpAddr OBJECT-TYPE
+		SYNTAX		IpAddress
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"The IP Address if known for the associated wireless 
+				 device."
+
+		::= { apInfoAddrRadioEntry 4 }
+
+	apInfoAddrRadioStatus OBJECT-TYPE
+		SYNTAX		INTEGER  {
+						authenticated	(1),
+						associated		(2),
+						connected		(3),
+						powerSaving		(4)
+					}
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"The current status of this device.  Note that the
+				enumeration is hierarchial implying all lower enumerations
+				apply.  The connected status implies that encryption
+				negotiations, if any, have been completed successfuly."
+
+		::= { apInfoAddrRadioEntry 5 }
+
+	apInfoAddrRadioAge OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"The current age of the entry in seconds, starting from
+				when the device last associated with this unit."
+
+		::= { apInfoAddrRadioEntry 6 }
+
+	apInfoAddrRadioRssi				OBJECT-TYPE
+		SYNTAX	INTEGER (0..128)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The signal strength of the device represented by this entry.
+				 The actual received power can be determined by taking the 
+				 returned number and subtracting 100.  This will usually
+				 result in a signed number in units of dBm.	 E.g. a returned
+				 value of 48 is equivalent to received signal level of -52
+				 dBm."
+		::= { apInfoAddrRadioEntry 7 }
+
+	apInfoAddrRadioTxRate			OBJECT-TYPE
+		SYNTAX	DataRate
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The current Tx Rate used to send data to the device
+				 represented by this entry."
+		::= { apInfoAddrRadioEntry 8 }
+
+	apInfoAddrRadioTxThroughput		OBJECT-TYPE
+		SYNTAX	INTEGER (0..4294967295)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The rate of data sent to the device represented by this 
+				 entry in units of kbits/s, averaged over the last n seconds,
+				 where n is obtained from apStatsRadioThroughputInterval."
+		::= { apInfoAddrRadioEntry 9 }
+
+	apInfoAddrRadioRxThroughput		OBJECT-TYPE
+		SYNTAX	INTEGER (0..4294967295)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The rate of data received from the device represented by this 
+				 entry in units of kbits/s, averaged over the last n seconds,
+				 where n is obtained from apStatsRadioThroughputInterval."
+		::= { apInfoAddrRadioEntry 10 }
+
+	apInfoAddrRadioTxPacketRate		OBJECT-TYPE
+		SYNTAX	INTEGER (0..4294967295)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The packet transmission rate to the device represented by 
+				 this entry, in packets per second, averaged over the last 
+				 n seconds, where n is obtained from 
+				 apStatsRadioThroughputInterval."
+		::= { apInfoAddrRadioEntry 11 }
+
+	apInfoAddrRadioRxPacketRate		OBJECT-TYPE
+		SYNTAX	INTEGER (0..4294967295)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The packet reception rate from the device represented by 
+				 this entry, in packets per second, averaged over the last 
+				 n seconds, where n is obtained from 
+				 apStatsRadioThroughputInterval."
+		::= { apInfoAddrRadioEntry 12 }
+
+	apInfoAddrRadioRetries			OBJECT-TYPE
+		SYNTAX	INTEGER (0..4294967295)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The percentage of transmissions to the device represented by 
+				 this entry, that were retries, taken over the last n seconds,
+				 where n is obtained from apStatsRadioThroughputInterval."
+		::= { apInfoAddrRadioEntry 13 }
+
+	apInfoAddrRadioTxFailureCount	OBJECT-TYPE
+		SYNTAX	Counter
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"Count of the number of transmission failures to the device 
+				 represented by this entry.  A failure is defined simply as
+				 not having successfully delivered a packet to the 
+				 destination.  This counter is zeroed upon Association or 
+				 Re-Association."
+		::= { apInfoAddrRadioEntry 14 }
+
+	apInfoAddrRadioAvgLatency		OBJECT-TYPE
+		SYNTAX	INTEGER (0..4294967295)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"This object is a running average of the latency to 
+				 successfully complete packet radio transmissions to the 
+				 device represented by this address table row.  
+
+				 Latency is in microseconds and is measured from the time 
+				 the packet is queued to the radio until the transmission 
+				 is successfully acknowledged by the destination device, 
+				 the transmission fails, or in the case of multicasts, 
+				 until the initial transmission	has completed.
+				 Note: - this value includes the RF transmission times of 
+				         any retransmissions and backoff intervals plus any
+				         acknowledge frames.
+				       - pipelining and aggregation imply that the actual
+				         packet rate will be higher than represented by this 
+				         number.
+				       - The running average is over the last 256 frames
+				         transmitted, therefore a reasonable packet flow is
+				         needed in order to get a timely value."
+		::= { apInfoAddrRadioEntry 15 }
+
+	--
+ 	-- The Ethernet Address Table
+    --     
+ 	apInfoAddrMaxNodes OBJECT-TYPE
+		SYNTAX	INTEGER (0..65535)
+		MAX-ACCESS	read-only
+		STATUS	current
+		DESCRIPTION
+				"Defines the maximum number of MAC Addresses that can
+				 be in the address table.  This includes both local and remote
+				 Ethernet devices as well as wireless devices.  
+				 Note: Wireless devices take priority and will always take a
+				 slot up to apInfoAddrMaxRadioNodes amount, therefore Ethernet
+				 devices will be limited to the remainder."
+		::= { apInfoAddr 4 }
+
+	apInfoAddrEtherTable OBJECT-TYPE
+		SYNTAX		SEQUENCE OF ApInfoAddrEtherEntry
+		MAX-ACCESS	not-accessible
+		STATUS		current
+		DESCRIPTION
+				"The Ethernet MAC Address table of the unit.  This contains 
+				 one entry for each MAC Address the unit has learned from
+				 either its Local Ethernet port, or Remote devices via
+				 it peer bridges. The number of entries is varying
+				 and limited to maximums that may vary by product.  Use the 
+				 apInfoAddrMaxNodes object to retrieve the maximum in 
+				 this unit."
+
+		::= { apInfoAddr 5 }
+
+
+	apInfoAddrEtherEntry OBJECT-TYPE
+		SYNTAX		ApInfoAddrEtherEntry    
+		MAX-ACCESS	not-accessible
+		STATUS		current
+		DESCRIPTION
+				"An Entry (conceptual row) in the apInfoAddrEtherTable 
+				 representing one external network device.  A row in this
+				 table cannot be created or deleted."
+		INDEX { apInfoAddrEtherEntryType, apInfoAddrEtherEntryIndex }
+
+		::= { apInfoAddrEtherTable 1 }
+
+
+	ApInfoAddrEtherEntry ::= SEQUENCE 
+		{
+			 apInfoAddrEtherEntryType		INTEGER,  
+			 apInfoAddrEtherEntryIndex		INTEGER,
+			 apInfoAddrEtherMacAddr			MacAddress,
+			 apInfoAddrEtherIpAddr			IpAddress,
+			 apInfoAddrEtherStatus			INTEGER,
+			 apInfoAddrEtherAge				INTEGER,
+			 apInfoAddrEtherPeerBridge		MacAddress
+		} 
+
+  	apInfoAddrEtherEntryType OBJECT-TYPE
+		SYNTAX		INTEGER  {  
+						localEthernet  (1),
+						remoteEthernet (4)
+					}
+		MAX-ACCESS	not-accessible
+		STATUS		current
+		DESCRIPTION
+				"Index object which identifies the type of Ethernet entry in
+				 the address table.  The localEthernet type is a device that
+				 has been learned directly via the unit's Ethernet port. The
+				 remoteEthernet type is a remote device that has been learned
+				 via one of the unit's peer Bridge links.  
+				 		 
+				 Any query will not find an entry in the address table if the
+				 unit's Network Mode is clientCPE."
+
+		::= { apInfoAddrEtherEntry 1 }
+
+   	apInfoAddrEtherEntryIndex OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS	not-accessible
+		STATUS		current
+		DESCRIPTION
+				"Index object which identifies the index into the MAC
+				 address table."
+
+		::= { apInfoAddrEtherEntry 2 }
+
+   
+	apInfoAddrEtherMacAddr OBJECT-TYPE
+		SYNTAX		MacAddress
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"The MAC Address of the associated Ethernet device."
+
+		::= { apInfoAddrEtherEntry 3 }
+
+ 	apInfoAddrEtherIpAddr OBJECT-TYPE
+		SYNTAX		IpAddress
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"The IP Address if known for the associated Ethernet 
+				 device."
+
+		::= { apInfoAddrEtherEntry 4 }
+
+	apInfoAddrEtherAge OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"The current age of the entry in seconds, starting from
+				when the device last associated with this unit."
+
+		::= { apInfoAddrEtherEntry 5 }
+
+  
+	apInfoAddrEtherPeerBridge OBJECT-TYPE
+		SYNTAX		MacAddress
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"The MAC Address of the peer wireless Bridge where this
+				entry resides. 
+				Note: This will display as an all zeros address for 
+				      localEthernet entry types."
+
+		::= { apInfoAddrEtherEntry 6 }
+
+ 	-- ********************************************************************
+	--
+	-- The objects in the Unit Scan List Table Group
+	--
+	-- ********************************************************************
+     
+	apInfoScanListMaxScanNodes OBJECT-TYPE
+		SYNTAX	INTEGER (0..65535)
+		MAX-ACCESS	read-only
+		STATUS	current
+		DESCRIPTION
+				"Defines the maximum number of entries that can be in the
+				 unit's scan list."
+		::= { apInfoScanList 1 }
+
+	apInfoScanListStaleTime OBJECT-TYPE
+		SYNTAX	INTEGER
+		MAX-ACCESS	read-only
+		STATUS	current
+		DESCRIPTION
+				"Defines an age value in seconds after which an entry
+				 in this table is deleted."
+		::= { apInfoScanList 2 }
+
+	apInfoScanListTable OBJECT-TYPE
+		SYNTAX		SEQUENCE OF ApInfoScanListEntry
+		MAX-ACCESS	not-accessible
+		STATUS		current
+		DESCRIPTION
+				"The aged list of nearby 802.11 Access Points maintained 
+				 by the unit from received Beacons and Probe Responses."
+
+		::= { apInfoScanList 3 }
+
+	apInfoScanListEntry OBJECT-TYPE
+		SYNTAX		ApInfoScanListEntry    
+		MAX-ACCESS	not-accessible
+		STATUS		current
+		DESCRIPTION
+				"An Entry (conceptual row) in the apInfoAddrTable representing
+				 one external network device.  A row in this table cannot be
+				 created or deleted."
+		INDEX { apInfoScanListIndex }
+
+		::= { apInfoScanListTable 1 }
+
+
+	ApInfoScanListEntry ::= SEQUENCE 
+		{
+			 apInfoScanListIndex			INTEGER,  
+			 apInfoScanListBSSID			MacAddress,
+			 apInfoScanListSSID				DisplayString,
+			 apInfoScanListChannel			INTEGER,
+			 apInfoScanListRssi				INTEGER,
+			 apInfoScanListCost				INTEGER,
+			 apInfoScanListAge				INTEGER,
+			 apInfoScanListHopCount			INTEGER,
+			 apInfoScanListType				INTEGER
+		} 
+
+   	apInfoScanListIndex OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS	not-accessible
+		STATUS		current
+		DESCRIPTION
+				"Index object which identifies the index into the Scan
+				 list table.  Note that this is a dynamic table and 
+				 entries will reposition as new entries are added and 
+				 others deleted."
+
+		::= { apInfoScanListEntry 1 }
+
+  	apInfoScanListBSSID OBJECT-TYPE
+		SYNTAX		MacAddress
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"The MAC Address of the detected wireless Access Point."
+
+		::= { apInfoScanListEntry 2 }
+
+ 	apInfoScanListSSID OBJECT-TYPE
+		SYNTAX	DisplayString (SIZE(1..32))
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"The SSID being advertised by the detected Access Point."
+
+		::= { apInfoScanListEntry 3 }
+
+   	apInfoScanListChannel OBJECT-TYPE
+		SYNTAX	INTEGER (0..255)
+		MAX-ACCESS	not-accessible
+		STATUS		current
+		DESCRIPTION
+				"The channel number on which this Access Point was
+				 detected."
+
+		::= { apInfoScanListEntry 4 }
+ 
+ 	apInfoScanListRssi	OBJECT-TYPE
+		SYNTAX	INTEGER (0..128)
+		ACCESS	read-only
+		STATUS	mandatory
+		DESCRIPTION
+				"The signal strength of the detected device.  The actual
+				 received power can be determined by taking the returned 
+				 number and subtracting 100. This will usually result in
+				 a signed number in units of dBm.	     E.g. a returned
+				 value of 48 is equivalent to a received signal level of
+				 -52 dBm."
+		::= { apInfoScanListEntry 5 }
+
+   	apInfoScanListCost OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS	not-accessible
+		STATUS		current
+		DESCRIPTION
+				"Indicates the cost calculated for this unit as a potential
+				 Parent candidate (regardless of SSID).  The cost formula
+				 uses both the RSSI and Hop Count of the detected unit.  A
+				 cost is also calculated for incompatible units even though
+				 this unit will never associate to them."
+
+		::= { apInfoScanListEntry 6 }
+
+   	apInfoScanListAge OBJECT-TYPE
+		SYNTAX		INTEGER
+		MAX-ACCESS	not-accessible
+		STATUS		current
+		DESCRIPTION
+				"Indicates the amount of time in seconds since this unit
+				 received a Beacon or Probe Response from the detected
+				 device.  Entries in the Scan List will be deleted when 
+				 their age reaches the value indicated by 
+				 apInfoScanListStaleTime."
+
+		::= { apInfoScanListEntry 7 }   
+		
+   	apInfoScanListHopCount OBJECT-TYPE
+		SYNTAX	INTEGER (0..15)
+		MAX-ACCESS	not-accessible
+		STATUS		current
+		DESCRIPTION
+				"For compatible  devices this will indicate the hop count
+				 being advertised by detected unit. 
+				 A value of:                
+				   0    - indicates that this is not a compatible unit.
+				   1   	- indicates that this is a 'Master' unit.  
+				   2-14 - indicates that this is a 'Repeater' that is 
+				          connected to a Parent whose hop count is one less
+				          than this value.  
+				   15   - indicates that this is a repeater that is not 
+				          connected to a Parent."
+
+		::= { apInfoScanListEntry 8 }
+
+  	apInfoScanListType OBJECT-TYPE
+		SYNTAX		INTEGER  {  
+						compatible	   (1),
+						otherVendor	   (2)
+					}
+		MAX-ACCESS	not-accessible
+		STATUS		current
+		DESCRIPTION
+				"Indicates if the detected device is compatible with this
+				 unit or if it is from a different vendor."
+
+		::= { apInfoScanListEntry 9 }
+
+
+ 	-- ********************************************************************
+	--
+	-- The objects in the Unit Cable Break Detection Table Group
+	--
+	-- ********************************************************************
+ 
+	apInfoCableBreakDetectionMaxEntries OBJECT-TYPE
+		SYNTAX 	INTEGER (0..65535)
+		MAX-ACCESS 	read-only
+		STATUS 	current
+		DESCRIPTION
+				"Define the maximum number of entries that can be
+				 monitored by the Cable Break Detection feature."
+		::= { apInfoCableBreakDetection 1 }
+
+	apInfoCableBreakDetectionCheckInterval OBJECT-TYPE
+		SYNTAX		INTEGER (0..65535)
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"Define the Cable Break Check Interval in second. 
+				 Cable break will be determined periodically at this 
+				 interval."
+		::= { apInfoCableBreakDetection 2 }
+
+	apInfoCableBreakDetectionTable OBJECT-TYPE
+		SYNTAX 	SEQUENCE OF ApInfoCableBreakDetectionEntry
+		MAX-ACCESS 	not-accessible
+		STATUS 	current
+		DESCRIPTION
+				"The list of monitored radios by the Cable Break 
+				 Detection feature"
+		::= { apInfoCableBreakDetection 3 }
+
+	apInfoCableBreakDetectionEntry OBJECT-TYPE
+		SYNTAX		ApInfoCableBreakDetectionEntry
+		MAX-ACCESS	not-accessible
+		STATUS		current
+		DESCRIPTION
+				"An Entry (conceptual row) in the apInfoCableBreakDetectionTable
+				 representing one monitored radio. A row in this table cannot
+				 be created or deleted."
+		INDEX { apInfoCableBreakDetectionIndex }
+		::= { apInfoCableBreakDetectionTable 1 }
+
+
+	ApInfoCableBreakDetectionEntry ::= SEQUENCE
+		{
+			apInfoCableBreakDetectionIndex			INTEGER,
+			apInfoCableBreakDetectionBSSID			MacAddress,
+			apInfoCableBreakDetectionName			DisplayString,
+			apInfoCableBreakDetectionBaselineRssi	INTEGER,
+			apInfoCableBreakDetectionRssi			INTEGER,
+			apInfoCableBreakDetectionIsDetected		INTEGER,
+			apInfoCableBreakDetectionDetectedCount	Counter
+		}
+
+	apInfoCableBreakDetectionIndex OBJECT-TYPE
+		SYNTAX 	INTEGER
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"Index object which identifies the index into the Cable 
+				 break detection table. Note that this is a dynamic table 
+				 and entries will reposition as new entries are added and 
+				 others are replaced."
+		::= { apInfoCableBreakDetectionEntry 1 }
+
+
+	apInfoCableBreakDetectionBSSID OBJECT-TYPE
+		SYNTAX		MacAddress
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"The MAC address of the monitored radio."
+		::= { apInfoCableBreakDetectionEntry 2 }
+
+	apInfoCableBreakDetectionName OBJECT-TYPE
+		SYNTAX		DisplayString (SIZE(1..32))
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"The name of the monitored radio."
+		::= { apInfoCableBreakDetectionEntry 3 }
+
+	apInfoCableBreakDetectionBaselineRssi OBJECT-TYPE
+		SYNTAX		INTEGER (-128..127)
+		ACCESS		read-only
+		STATUS		current
+		DESCRIPTION
+				"The baseline signal strength (in dBm) of the monitored 
+				 radio."
+		::= { apInfoCableBreakDetectionEntry 4 }
+
+	apInfoCableBreakDetectionRssi OBJECT-TYPE
+		SYNTAX		INTEGER (-128..127)
+		ACCESS		read-only
+		STATUS		current
+		DESCRIPTION
+				"The signal strength (in dBm) of the monitored radio in 
+				 the last Cable Break Check Interval."
+		::= { apInfoCableBreakDetectionEntry 5 }
+
+	apInfoCableBreakDetectionIsDetected OBJECT-TYPE
+		SYNTAX		INTEGER (0..1)
+		ACCESS		read-only
+		STATUS		current
+		DESCRIPTION
+				"This indicates whether cable break is currently detected 
+				 between this radio and the monitored radio. This value is 
+				 updated on every Cable Break Check Interval."
+		::= { apInfoCableBreakDetectionEntry 6 }
+
+	apInfoCableBreakDetectionDetectedCount OBJECT-TYPE
+		SYNTAX		Counter
+		ACCESS		read-only
+		STATUS		current
+		DESCRIPTION
+				"If cable break is currently detected, this counts the 
+				 number of times the cable break has been detected 
+				 consecutively in the past Cable Break Check Intervals. 
+				 If cable break is not current detected, the counter 
+				 resets to zero."
+		::= { apInfoCableBreakDetectionEntry 7 }
+
+
+
+	-- ******************************************************************
+	--
+	-- The objects in the apRptrCntl Group
+	--
+	-- ******************************************************************
+
+	apRptrCntlChanScanDur OBJECT-TYPE
+		SYNTAX	INTEGER (5..255)
+		ACCESS	read-write
+		STATUS	deprecated
+		DESCRIPTION
+				"The time the unit will stay on each channel when 
+				 performing a Scan to find a Parent Bridge.  This 
+				 parameter is only relevant when operating in 
+				 Repeater mode.  Value is in units of 10 milliseconds."
+		::= { apRptrCntl 1 }
+
+	apRptrCntlInitScanDur OBJECT-TYPE
+		SYNTAX	INTEGER (1..255)
+		ACCESS	read-write
+		STATUS	deprecated
+		DESCRIPTION
+				"The total time the unit will Scan before selecting a
+				 parent node to associate with.  This parameter is only 
+				 valid when operating in Repeater mode.  Value is in units
+				 of seconds.  If no parent has been found after this time
+				 has expired a new Scan is initiated."
+		::= { apRptrCntl 2 }
+
+	apRptrCntlBGScanInterval OBJECT-TYPE
+		SYNTAX	INTEGER (1..255)
+		ACCESS	read-write
+		STATUS	deprecated
+		DESCRIPTION
+				"The interval at which the unit will start a scan to
+				 look for a root-connected parent.  This parameter is 
+				 only valid when operating in Repeater mode.  Value is
+				 in units of minutes.
+				 This timer will only be used if the repeater has not
+				 found a root connected parent node and has either started
+				 its own BSS or joined with a parent that is not root-
+				 connected."
+		::= { apRptrCntl 3 }
+
+	apRptrCntlBridgeInfoPeriod OBJECT-TYPE
+		SYNTAX	INTEGER (1..255)
+		ACCESS	read-write
+		STATUS	deprecated
+		DESCRIPTION
+				"The interval at which the bridge unit, operating in 
+				 either Master or Repeater mode, will transmit a 
+				 proprietary Bridge Info frame to its BSS.  Value is in
+				 units of 100 milliseconds."
+		::= { apRptrCntl 4 }
+
+	apRptrCntlHopCountOverride OBJECT-TYPE
+		SYNTAX	INTEGER {
+				autoConnect(1),
+				hopCountOverride01(2),
+				hopCountOverride02(3),
+				hopCountOverride03(4),
+				hopCountOverride04(5),
+				hopCountOverride05(6),
+				hopCountOverride06(7),
+				hopCountOverride07(8),
+				hopCountOverride08(9),
+				hopCountOverride09(10),
+				hopCountOverride10(11),
+				hopCountOverride11(12),
+				hopCountOverride12(13),
+				hopCountOverride13(14),
+				hopCountOverride14(15)
+				}
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"Controls the behaviour of a unit in Repeater mode.  A
+				 value of autoConnect allows the unit to scan and select
+				 'the best' parent using the following criteria in 
+				 decending order of importance:  
+				 		Root-Connected Parent
+				 		Hop Count
+				 		Signal Strength
+				 If an override value is set, then the Repeater will only
+				 associate with a parent that is advertising that particular
+				 hop count.  e.g. a hopCountOverride_01 value means the
+				 Repeater will only associate with a Master Bridge."
+		::= { apRptrCntl 5 }
+
+	apRptrCntlStartBSS OBJECT-TYPE
+		SYNTAX	INTEGER {
+			startBssDisabled(1),
+			startBssEnabled(2)
+		}
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"Indicates if the unit, operating in Repeater mode, will
+				 start its own wireless BSS once it has associated with a
+				 parent.  If set to startBSSDisabled, then the Repeater
+				 will not start a BSS if it does not find a suitable parent
+				 after a Scan, but will continue scanning indefintely until
+				 a parent is found.  When set to startBSSDisabled only 
+				 bridge frames from the unit's Ethernet will be sent to
+				 the parent once it is associated.  When set to 
+				 startBSSEnabled, then the Repeater will accept associations
+				 from wireless client devices and bridge both these and
+				 its Ethernet frames to its Parent."
+		::= { apRptrCntl 6 }
+
+	apRptrCntlOverrideParent OBJECT-TYPE
+		SYNTAX	INTEGER {
+			overrideParentDisabled(1),
+			overrideParentEnabled(2)
+		}
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"Inidicates if the unit, operating in Repeater mode, will
+				 associate to a particular parent as specified in the
+				 apRptrCntlParentOverrideAddress parameter or if will
+				 associate with a selected 'best' parent discovered during
+				 a Scan.  If set to overrideParentEnabled then any hop
+				 apRptrCntlHopCountOverride setting is ignored."
+		::= { apRptrCntl 7 }
+
+	apRptrCntlEnableBridgeInfo OBJECT-TYPE
+		SYNTAX	INTEGER {
+			bridgeInfoDisabled(1),
+			bridgeInfoEnabled(2)
+		}
+		ACCESS	read-write
+		STATUS	deprecated
+		DESCRIPTION
+				"Controls whether the unit, operating in either Master of
+				 Repeater modes, will transmit is periodic Bridge Info
+				 frame."
+		::= { apRptrCntl 8 }
+
+	apRptrCntlParentOverrideAddress OBJECT-TYPE
+		SYNTAX	MacAddress
+		ACCESS	read-write
+		STATUS	mandatory
+		DESCRIPTION
+				"Sets the MAC Address of the bridge to which this unit,
+				 operating in Repeater mode, must associate with.  This
+				 parameter is only valid if the apRptrCntlOverrideParent
+				 parameter is set to overrideParentEnabled."
+		::= { apRptrCntl 9 }
+
+	-- ******************************************************************
+	--
+	-- The objects in the apTraps Group
+	--
+	-- ******************************************************************		
+
+	apTrapsCableBreak NOTIFICATION-TYPE
+		OBJECTS {
+				apInfoGenAPAddress,
+				apInfoIdRadioName,
+				apInfoCableBreakDetectionBSSID,
+				apInfoCableBreakDetectionName,
+				apInfoCableBreakDetectionBaselineRssi,
+				apInfoCableBreakDetectionRssi,
+				apInfoCableBreakDetectionDetectedCount
+		}
+		STATUS	current
+		DESCRIPTION
+			"This trap is sent when a radiating cable break is detected."
+		::= { apTraps 1 }
+
+	END

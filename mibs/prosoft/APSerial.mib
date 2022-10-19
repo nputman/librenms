@@ -1,0 +1,861 @@
+--
+--			Copyright (c) 2019-2020 by ProSoft Technology, Inc.
+--			Copyright (c) 2009-2018 by GlobalBlue Networks Inc.
+--			Copyright (c) 2008 by Neesus Datacom Inc.
+--			All rights reserved
+--
+------------------------------------------------------------------------------
+--
+
+		-- APSerial-MIB
+
+		-- Feb. 29, 2008
+		-- v0.1
+			-- Add MIB entries for Serial Application parameters.
+		--
+		-- Mar. 14, 2008
+		-- v0.2
+		    -- Add Status and Statistics parameter
+
+		-- ProSoft Technology, Inc.
+		-- 9201 Camino Media, Suite 200
+		-- Bakersfield, CA 93311
+		-- US +1 661-716-5100
+		-- support@prosoft-technology.com
+
+
+
+	-- 1.  Introduction
+
+	-- This file describes the variables that are implemented in
+	-- the Neesus Datacom ROM-AP licensable software to facilitate
+	-- control of the Serial Character transport applications. 
+	-- The document relies upon the Structure of Management Information 
+	-- (SMI), RFC1155.	 It is presented in a format described in RFC1212, 
+	-- the Concise MIB document.
+
+	-- 2. Object Definitions
+
+	-- APSerial-MIB {iso(1) org(3) dod(6) internet(1) private(4)
+	--			  enterprises(1) 10227 }
+	-- 1.3.6.1.4.1.10227.5
+
+	APSerial-MIB DEFINITIONS ::= BEGIN
+
+	IMPORTS
+		enterprises, IpAddress, Counter, TimeTicks
+				   FROM RFC1155-SMI
+		romap	
+				   FROM ROMAP-MIB
+		OBJECT-TYPE
+				   FROM RFC-1212
+	DisplayString
+		FROM SNMPv2-TC;
+
+	--
+	-- Textual Conventions --
+	--
+
+	MacAddress ::= OCTET STRING (SIZE (6))	  -- a 6 octet address
+
+--	romap			OBJECT IDENTIFIER ::= {enterprises 10227}
+
+	apserial		OBJECT IDENTIFIER ::= {romap 5}
+
+
+
+	-- Serial Port Groups
+	--
+	-- apSerialComTable				  ::= {apserial 1}
+	-- apSerialAppTable				  ::= {apserial 2}
+	-- apSerialBufTable				  ::= {apserial 3}    
+	-- apSerialStatus              	  ::= {apserial 4}
+	-- apSerialStatusNumPorts         ::= {apserial 5}
+
+
+
+	-- ******************************************************************
+	--
+	-- 					a p S e r i a l   -  T a b l e s
+	--
+	--
+	-- ******************************************************************
+	--
+	-- The objects in the apSerialCom Table used to define Com Settings
+	--
+	-- ******************************************************************
+
+	apSerialComTable OBJECT-TYPE
+		SYNTAX		SEQUENCE OF ApSerialComEntry
+		MAX-ACCESS	not-accessible
+		STATUS		current
+		DESCRIPTION
+				"The settings needed to initialize the operating state of
+				 this Serial Port's UART and low level character handling
+				 routines"
+
+		::= { apserial 1 }
+
+
+	apSerialComEntry OBJECT-TYPE
+		SYNTAX		ApSerialComEntry
+		MAX-ACCESS	not-accessible
+		STATUS		current
+		DESCRIPTION
+				"An Entry (conceptual row) in the apSerialComTable
+				 representing a particular Serial Port of the unit."
+		INDEX { apSerialComIndex }
+
+		::= { apSerialComTable 1 }
+
+
+	ApSerialComEntry ::= SEQUENCE 
+		{
+			 apSerialComIndex		INTEGER,
+			 apSerialComBaudRate	INTEGER,
+			 apSerialComDataBits	INTEGER,
+			 apSerialComStopBits	INTEGER,
+			 apSerialComParity		INTEGER,
+			 apSerialComDtrDsr		INTEGER,
+			 apSerialComFlowCntl	INTEGER,
+			 apSerialComPktDelin	INTEGER,
+			 apSerialComEolString	OCTET STRING,
+			 apSerialComEolTimeGap	INTEGER,
+			 apSerialComUartNumber	INTEGER,
+			 apSerialComAddCrToNl	INTEGER,
+			 apSerialComTelnetTap	INTEGER
+		}
+
+
+	apSerialComIndex OBJECT-TYPE
+		SYNTAX		INTEGER (1..255)
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"Index object which identifies which Serial Port to
+				 access.  Range depends on the number of physical serial
+				 ports.  
+
+				 Port 1 is reserved for the unit's Console Port, which 
+				 can function even without a physical UART, via a telnet
+				 link.
+
+				 Therefore if two physical serial ports are available on
+				 the unit, the range would be 1 to 3."
+
+		::= { apSerialComEntry 1 }
+
+
+	apSerialComBaudRate OBJECT-TYPE
+		SYNTAX		INTEGER  {
+			baud115k2	(2),
+			baud57k6	(4),
+			baud38k4	(6),
+			baud28k8	(8),
+			baud19k2	(12),
+			baud14k4	(16),
+			baud9600	(24),
+			baud4800	(48),
+			baud2400	(96),
+			baud1200	(192),
+			baud600		(384),
+			baud300		(768),
+			baud110		(2094) 
+		}
+		ACCESS		read-write
+		STATUS		mandatory
+		DESCRIPTION
+				"The Baud Rate for the Com Port."
+
+		::= { apSerialComEntry 2 }
+
+
+	apSerialComDataBits OBJECT-TYPE
+		SYNTAX		INTEGER  {
+			dataBits5	(1),
+			dataBits6	(2),
+			dataBits7	(3),
+			dataBits8	(4)
+		}
+		ACCESS		read-write
+		STATUS		mandatory
+		DESCRIPTION
+				"The number of data bits in each serial character."
+
+		::= { apSerialComEntry 3 }
+
+
+	apSerialComStopBits OBJECT-TYPE
+		SYNTAX		INTEGER  {
+			stopBits1	(1),
+			stopBits2	(2)
+		}
+		ACCESS		read-write
+		STATUS		mandatory
+		DESCRIPTION
+				"The number of stop bits transmitted at the end of
+				 each serial character."
+
+		::= { apSerialComEntry 4 }
+
+
+	apSerialComParity OBJECT-TYPE
+		SYNTAX		INTEGER  {
+			parityNone	(1),
+			parityOdd	(2),
+			parityEven	(3),
+			parityOne	(4),
+			parityZero	(5)
+		}
+		ACCESS		read-write
+		STATUS		mandatory
+		DESCRIPTION
+				"The type of parity bit added to each serial character
+				 if any." 
+
+		::= { apSerialComEntry 5 }
+
+
+	apSerialComDtrDsr OBJECT-TYPE
+		SYNTAX		INTEGER  {
+			dtrDsrDisabled	(1),
+			dtrDsrEnabled	(2)
+		}
+		ACCESS		read-write
+		STATUS		mandatory
+		DESCRIPTION
+				"This enables the use of the DTR output and DSR input of
+				 a serial port.  If disabled the DTR output is not
+				 activated and the DSR line is ignored.  If enabled the
+				 DTR line is set active one the unit has established a 
+				 session over which to transport the serial characters."
+
+		::= { apSerialComEntry 6 }
+
+
+	apSerialComFlowCntl OBJECT-TYPE
+		SYNTAX		INTEGER  {
+			flowCntlNone	(1),
+			flowCntlXonXoff	(2),
+			flowCntlHardware(3)
+		}
+		ACCESS		read-write
+		STATUS		mandatory
+		DESCRIPTION
+				"The type of flow control to be used.  Both types are
+				 considered 'local' in that they are output based on
+				 the level of the receive buffer of the Serial port.
+				 If flow control is set to Xon-Xoff these characters
+				 if received will be filtered from the serial stream.
+				 Hardware flow control makes use of the RTS-CTS lines."
+
+		::= { apSerialComEntry 7 }
+
+
+	apSerialComPktDelin OBJECT-TYPE
+		SYNTAX		INTEGER  {
+			pktDelinNone	(1),
+			pktDelinTime	(2),
+			pktDelinChar	(3)
+		}
+		ACCESS		read-write
+		STATUS		mandatory
+		DESCRIPTION
+				"The type of packet delineation to be used.  If none
+				 selected then characters received from the UART will be 
+				 sent to the remote node after a fixed elapsed time or 
+				 data level in the buffer.  These are set via the 
+				 apSerialBufThresh and apSerialBufTimeout parameters.  
+
+				 If 'time' packet delineation is set then the 
+				 apSerialComEolTimeGap parameter is used to specify the 
+				 minimum time gap between characters that is to be 
+				 interpreted as a delineator for a packet.  
+
+				 'Char' delineation is achieved by monitoring the incomming
+				 serial stream for the particular sequence of characters 
+				 defined in the apSerialComEolString field."
+
+		::= { apSerialComEntry 8 }
+
+
+	 apSerialComEolString	OBJECT-TYPE	
+	 	SYNTAX		OCTET STRING (SIZE(1..6))
+		ACCESS		read-write
+		STATUS		mandatory
+		DESCRIPTION
+				"The character string that will be used to delineate the
+				 end of a 'packet'if enabled by the apSerialComPktDelin
+				 field.  When found in a serial stream it will be added 
+				 to the receive buffer and all characters in the buffer 
+				 will be sent to the remote node as one packet."
+
+		::= { apSerialComEntry 9 }
+
+
+	 apSerialComEolTimeGap	OBJECT-TYPE
+	 	SYNTAX		INTEGER (1..65535)
+		ACCESS		read-write
+		STATUS		mandatory
+		DESCRIPTION
+				"The minimum time in units of microseconds that must 
+				 elapse after a received character before that character
+				 marks the end of a packet.  This field is only valid if
+				 enabled via the apSerialComPktDelin parameter. 
+
+				 NOTE: the smallest value this field can be set to will 
+				       be limited by the device and is platform dependent."
+
+		::= { apSerialComEntry 10 }
+
+
+	 apSerialComUartNumber	OBJECT-TYPE
+	 	SYNTAX		INTEGER (1..255)
+		ACCESS		read-write
+		STATUS		mandatory
+		DESCRIPTION
+				"A number identifying the physical Uart number on the unit 
+				 that is to be assigned to this Serial Port.  On units 
+				 with multiple serial interfaces this allows the physical
+				 connectors to be re-assigned without changing any other
+				 parameters of the Serial Applications.
+
+				 A value of 255 shall mean no UART is assigned to this 
+				 Serial Port."
+
+		::= { apSerialComEntry 11 }
+
+
+	 apSerialComAddCrToNl	OBJECT-TYPE
+	 	SYNTAX		INTEGER  {
+	 		disabled (1),
+	 		enabled  (2)
+	 	}
+		ACCESS		read-write
+		STATUS		mandatory
+		DESCRIPTION
+				"If enabled will add a Carriage Return to a block/packet
+				 of characters being output to the physical interface
+				 that end in a New Line character.  
+				 Note: that this will not detect New Line characters that 
+					   are in the middle of a packet/block of characters."
+
+		::= { apSerialComEntry 12 }
+
+
+	 apSerialComTelnetTap	OBJECT-TYPE
+	 	SYNTAX		INTEGER {
+	 		prohibited (1),
+	 		allowed    (2)
+	 	}
+		ACCESS		read-write
+		STATUS		mandatory
+		DESCRIPTION
+				"Allows the unit's telnet server to be connected to the
+				 Serial Ports Tx and Rx buffers, in essesnce tapping into
+				 the character stream being transmitted out from the unit's
+				 serial port.  Characters input from the telnet session
+				 will be copied to the Serial Ports input buffer."
+
+		::= { apSerialComEntry 13 }
+
+
+
+
+	-- ******************************************************************
+	--
+	-- The objects in the apSerialApp Table used to define the Serial
+	-- Applications network settings.
+	--
+	-- ******************************************************************
+
+
+	apSerialAppTable OBJECT-TYPE
+		SYNTAX		SEQUENCE OF ApSerialAppEntry
+		MAX-ACCESS	not-accessible
+		STATUS		current
+		DESCRIPTION
+				"The settings needed to initialize the operating state of
+				 this Serial Port's UART and low level character handling
+				 routines"
+
+		::= { apserial 2 }
+
+
+	apSerialAppEntry OBJECT-TYPE
+		SYNTAX		ApSerialAppEntry
+		MAX-ACCESS	not-accessible
+		STATUS		current
+		DESCRIPTION
+				"An Entry (conceptual row) in the apSerialAppTable
+				 representing a particular Serial Port of the unit."
+
+		INDEX { apSerialAppIndex }
+
+		::= { apSerialAppTable 1 }
+
+
+	ApSerialAppEntry ::= SEQUENCE 
+		{
+			 apSerialAppIndex		INTEGER,
+			 apSerialAppRmtConType	INTEGER,
+			 apSerialAppRmtIpAddr	IpAddress,
+			 apSerialAppRmtPortNum	INTEGER,
+			 apSerialAppLocPortNum 	INTEGER
+		}
+
+
+	apSerialAppIndex OBJECT-TYPE
+		SYNTAX		INTEGER (1..255)
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"Index object which identifies which Serial Port to
+				 access.  Range depends on the number of physical serial
+				 ports.  
+
+				 Port 1 is reserved for the unit's Console Port, which 
+				 can function even without a physical UART, via a telnet
+				 link.
+
+				 Therefore if two physical serial ports are available on
+				 the unit, the range would be 1 to 3."
+
+		::= { apSerialAppEntry 1 }
+
+
+	apSerialAppRmtConType OBJECT-TYPE
+		SYNTAX		INTEGER {
+			none		(1),
+			udp			(2),
+			tcpServer	(3),
+			tcpClient	(4)
+		}
+		ACCESS		read-write
+		STATUS		mandatory
+		DESCRIPTION
+				"The type of remote connection that the Serial Application
+				 will use to transport serial characters.  A value of none
+				 means the application is disabled.
+
+				 The udp type is a best efforts mechanism using a standard
+				 UDP socket.  The serial port is immediately enabled for 
+				 both transmit and receive.
+
+				 The tcpServer type accepts a single TCP connection from a
+				 remote device.  The serial port is enabled once this 
+				 session is established.
+
+				 The tcpClient type will repeatedly attempt to establish a 
+				 connection with a remote device.  Once it successfuly 
+				 establishes a session the serial port is enabled to 
+				 transmit and receive characters."
+
+		::= { apSerialAppEntry 2 }
+
+
+	apSerialAppRmtIpAddr OBJECT-TYPE
+		SYNTAX		IpAddress 
+		ACCESS		read-write
+		STATUS		mandatory
+		DESCRIPTION
+				"The IP Address of the remote device.  This field is used
+				 for the udp and tcpClient connection modes."
+
+		::= { apSerialAppEntry 3 }
+
+
+	apSerialAppRmtPortNum OBJECT-TYPE
+		SYNTAX		INTEGER (1..65535)
+		ACCESS		read-write
+		STATUS		mandatory
+		DESCRIPTION
+				"The port number being used by the remote device's UDP or
+				 TCP socket.  This field is used for the udp and tcpClient
+				 connection modes."
+
+		::= { apSerialAppEntry 4 }
+
+
+	apSerialAppLocPortNum OBJECT-TYPE
+		SYNTAX		INTEGER (1..65535)
+		ACCESS		read-write
+		STATUS		mandatory
+		DESCRIPTION
+				"The port number of the local socket used in the udp and
+				 tcpServer modes."
+
+		::= { apSerialAppEntry 5 }
+
+
+
+
+
+	-- ******************************************************************
+	--
+	-- The objects in the apSerialBuf Table used to define Buffer Settings
+	--
+	-- ******************************************************************
+
+
+	apSerialBufTable OBJECT-TYPE
+		SYNTAX		SEQUENCE OF ApSerialBufEntry
+		MAX-ACCESS	not-accessible
+		STATUS		current
+		DESCRIPTION
+				"The settings needed to initialize the operating state of
+				 this Serial Port's UART and low level character handling
+				 routines"
+
+		::= { apserial 3 }
+
+	apSerialBufEntry OBJECT-TYPE
+		SYNTAX		ApSerialBufEntry
+		MAX-ACCESS	not-accessible
+		STATUS		current
+		DESCRIPTION
+				"An Entry (conceptual row) in the apSerialBufTable
+				 representing a particular Serial Port of the unit."
+
+		INDEX { apSerialBufIndex }
+
+		::= { apSerialBufTable 1 }
+
+	ApSerialBufEntry ::= SEQUENCE 
+		{
+			 apSerialBufIndex		INTEGER,
+			 apSerialBufTxSize		INTEGER,
+			 apSerialBufRxSize		INTEGER,
+			 apSerialBufTimeout 	INTEGER,
+			 apSerialBufThresh		INTEGER
+		}
+
+
+	apSerialBufIndex OBJECT-TYPE
+		SYNTAX		INTEGER (1..255)
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"Index object which identifies which Serial Port to
+				 access.  Range depends on the number of physical serial
+				 ports.  
+
+				 Port 1 is reserved for the unit's Console Port, which 
+				 can function even without a physical UART, via a telnet
+				 link.
+
+				 Therefore if two physical serial ports are available on
+				 the unit, the range would be 1 to 3."
+
+		::= { apSerialBufEntry 1 }
+
+
+	apSerialBufTxSize OBJECT-TYPE
+		SYNTAX		INTEGER (1..4294967295)
+		ACCESS		read-write
+		STATUS		mandatory
+		DESCRIPTION
+				"The size in octets of the character buffer that will be 
+				 used for characters received from the remote node to be 
+				 transmitted to the UART.  The upper limit to this value 
+				 is dependent on the platform and will be bounded by the 
+				 implementation depending on its available memory.  When
+				 read the actual buffer size will be returned."
+
+		::= { apSerialBufEntry 2 }
+
+
+	apSerialBufRxSize OBJECT-TYPE
+		SYNTAX		INTEGER (1..4294967295)
+		ACCESS		read-write
+		STATUS		mandatory
+		DESCRIPTION
+				"The size n octets of the character buffer that will be 
+				 used for characters received from the UART to be sent 
+				 to the remote node. The upper limit to this value is 
+				 dependent on the platform and will be bounded by the 
+				 implementation depending on its available memory.  When
+				 read the actual buffer size will be returned."
+
+		::= { apSerialBufEntry 3 }
+
+
+	apSerialBufTimeout OBJECT-TYPE
+		SYNTAX		INTEGER (1000..500000)
+		ACCESS		read-write
+		STATUS		mandatory
+		DESCRIPTION
+				"The periodic timeout in microseconds that will signal 
+				 the Serial Application to transfer any characters in 
+				 the UARTs receive buffer to the remote node via its 
+				 established UDP or TCP session."
+
+		::= { apSerialBufEntry 4 }
+
+
+	apSerialBufThresh OBJECT-TYPE
+		SYNTAX		INTEGER (1..4294967295)
+		ACCESS		read-write
+		STATUS		mandatory
+		DESCRIPTION
+				"The number of bytes in the UARTs receive buffer that
+				 will trigger a transfer of the buffer to the remote node
+				 via the established UDP or TCP session."
+
+		::= { apSerialBufEntry 5 }
+
+
+	-- ******************************************************************
+	--
+	-- The objects in the apSerialStatus Table used to retrieve current
+	-- status and statistics of the Serial Application.
+	--
+	-- ******************************************************************
+
+	apSerialStatusTable OBJECT-TYPE
+		SYNTAX		SEQUENCE OF ApSerialStatusEntry
+		MAX-ACCESS	not-accessible
+		STATUS		current
+		DESCRIPTION
+				"The current status of the Serial Applications and the 
+				 statistic counters maintained by the serial driver."
+
+		::= { apserial 4 }
+
+
+	apSerialStatusEntry OBJECT-TYPE
+		SYNTAX		ApSerialStatusEntry
+		MAX-ACCESS	not-accessible
+		STATUS		current
+		DESCRIPTION
+				"An Entry (conceptual row) in the apSerialStatusTable
+				 representing a particular Serial Port of the unit."
+
+		INDEX { apSerialStatusIndex }
+
+		::= { apSerialStatusTable 1 }
+
+
+	ApSerialStatusEntry ::= SEQUENCE 
+		{
+			 apSerialStatusIndex			INTEGER,
+			 apSerialStatusConStatus 		INTEGER,
+			 apSerialStatusRxConFailures	Counter,
+			 apSerialStatusPortStatus		INTEGER,
+			 apSerialStatusTxBufLevel		INTEGER,
+			 apSerialStatusRxBufLevel		INTEGER,
+			 apSerialStatusTxCharCount		Counter,
+			 apSerialStatusRxCharCount		Counter,
+			 apSerialStatusTxPktCount		Counter,
+			 apSerialStatusRxPktCount		Counter,
+			 apSerialStatusTxFlowEvents		Counter,
+			 apSerialStatusRxFlowEvents		Counter,
+			 apSerialStatusRxBufOvrflows	Counter,
+			 apSerialStatusRxFifoOvrflows	Counter,
+			 apSerialStatusRxFrameErrors	Counter,
+			 apSerialStatusRxParityErrors	Counter
+		}
+
+
+	apSerialStatusIndex OBJECT-TYPE
+		SYNTAX		INTEGER (1..255)
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"Index object which identifies which Serial Port to
+				 access.  Range depends on the number of physical serial
+				 ports.  
+
+				 Port 1 is reserved for the unit's Console Port, which 
+				 can function even without a physical UART, via a telnet
+				 link.
+
+				 Therefore if two physical serial ports are available on
+				 the unit, the range would be 1 to 3."
+
+		::= { apSerialStatusEntry 1 }
+
+	apSerialStatusConStatus OBJECT-TYPE
+		SYNTAX		INTEGER {
+						connected(1),
+						not_connected(2)
+					}
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"The current Remote Session Connection status.  For TCP
+				 client and Server modes, this represents whether a TCP
+				 session has successfully been established.  For UDP mode
+				 this parameter will always read as 'connected'."
+
+		::= { apSerialStatusEntry 2 }
+
+	apSerialStatusRxConFailures OBJECT-TYPE
+		SYNTAX		Counter 
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"Count of the number of times a remote connection has 
+				 failed and had to be re-established."
+
+		::= { apSerialStatusEntry 3 }
+
+	apSerialStatusPortStatus OBJECT-TYPE
+	 	SYNTAX		INTEGER (1..15)
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"This bit field indicates the current state of the Serial
+				 Ports transmit path, receive path, DTR output and DSR 
+				 input. The bits are encodes as follows:
+					{
+						TxEnabled(0),
+						RxEnabled(1),
+						DTRActive(2),
+						DSRActive(3)
+					} "
+
+		::= { apSerialStatusEntry 4 }
+
+	apSerialStatusTxBufLevel OBJECT-TYPE
+		SYNTAX		INTEGER (1..4294967295)
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"The current number of bytes that are in the Tx Buffer 
+				 waiting to be transmitted."
+
+		::= { apSerialStatusEntry 5 }
+
+	apSerialStatusRxBufLevel OBJECT-TYPE
+		SYNTAX		INTEGER (1..4294967295)
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"The current number of bytes that are in the Rx Buffer 
+				 waiting to be processed."
+
+		::= { apSerialStatusEntry 6 }
+
+	apSerialStatusTxCharCount OBJECT-TYPE
+		SYNTAX		Counter 
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"Count of the number of characters that have been
+				 transmitted from this Serial Port."
+
+		::= { apSerialStatusEntry 7 }
+
+	apSerialStatusRxCharCount OBJECT-TYPE
+		SYNTAX		Counter 
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"Count of the number of characters that have been
+				 transmitted from this Serial Port."
+
+		::= { apSerialStatusEntry 8 }
+
+	apSerialStatusTxPktCount OBJECT-TYPE
+		SYNTAX		Counter 
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"Count of the number of serial packets that have been
+				 transmitted from this Serial Port."
+
+		::= { apSerialStatusEntry 9 }
+
+	apSerialStatusRxPktCount OBJECT-TYPE
+		SYNTAX		Counter 
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"Count of the number of serial packets that have been
+				 received by this Serial Port."
+
+		::= { apSerialStatusEntry 10 }
+
+	apSerialStatusTxFlowEvents OBJECT-TYPE
+		SYNTAX		Counter 
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"Count of the number of times the Tx path of the serial
+				 port has been paused by a flow control event generated by
+				 the attached serial device."
+
+		::= { apSerialStatusEntry 11 }
+
+	apSerialStatusRxFlowEvents OBJECT-TYPE
+		SYNTAX		Counter 
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"Count of the number of times the Rx path of the serial
+				 port has been paused by a flow control event generated by 
+				 this device."
+
+		::= { apSerialStatusEntry 12 }
+
+	apSerialStatusRxBufOvrflows OBJECT-TYPE
+		SYNTAX		Counter 
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"Count of the number of times the receive buffer has 
+				 been full resulting in the discard of a received character."
+
+		::= { apSerialStatusEntry 13 }
+
+	apSerialStatusRxFifoOvrflows OBJECT-TYPE
+		SYNTAX		Counter 
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"Count of the number of times the hardware receive fifo has 
+				 been full resulting in the discard of a received character."
+
+		::= { apSerialStatusEntry 14 }
+
+	apSerialStatusRxFrameErrors OBJECT-TYPE
+		SYNTAX		Counter 
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"Count of the number of times a frame error has been detected
+				 by the UART."
+
+		::= { apSerialStatusEntry 15 }
+
+	apSerialStatusRxParityErrors OBJECT-TYPE
+		SYNTAX		Counter 
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"Count of the number of characters that were received with
+				 a parity error."
+
+		::= { apSerialStatusEntry 16 }
+
+
+
+	-- ******************************************************************
+	--
+	-- The number of physical and virtual ports supported by this unit.
+	--
+	-- ******************************************************************
+
+	apSerialStatusNumPorts OBJECT-TYPE
+		SYNTAX		INTEGER (1..16)
+		MAX-ACCESS	read-only
+		STATUS		current
+		DESCRIPTION
+				"The number of physical and virtual Serial Ports supported
+				 by this unit.  Typically this number will be one more than
+				 the number of physical ports available."
+
+		::= { apserial 5 }
+
+	END
